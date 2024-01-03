@@ -20,7 +20,7 @@ export const dbConnect = async () => {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts);
+    cached.promise = await mongoose.connect(MONGODB_URI, opts);
   }
 
   try {
