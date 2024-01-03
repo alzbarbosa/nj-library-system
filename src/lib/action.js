@@ -4,6 +4,8 @@ import { signIn, signOut } from "./auth";
 import { User } from "./models";
 import { dbConnect } from "./utils";
 import bcrypt from "bcryptjs";
+import { Book, Rating } from "./models";
+import { revalidatePath } from "next/cache";
 
 export const handleGithubLogin = async () => {
   await signIn("github");
@@ -13,7 +15,7 @@ export const handleLogout = async () => {
   await signOut();
 };
 
-export const register = async (formData) => {
+export const register = async (prevData, formData) => {
   "use server";
 
   const { username, email, password, img, passwordRepeat } =
@@ -21,7 +23,7 @@ export const register = async (formData) => {
 
   if (password !== passwordRepeat) {
     // return "Passwords do not match"
-    throw new Error("Passwords do not match");
+    return { error: "Passwords do not match" };
   }
 
   try {
@@ -53,7 +55,7 @@ export const register = async (formData) => {
   }
 };
 
-export const login = async (formData) => {
+export const login = async (prevData, formData) => {
   const { username, password } = Object.fromEntries(formData);
 
   try {
@@ -64,6 +66,50 @@ export const login = async (formData) => {
     if (err.message.includes("CredentialsSignin")) {
       return { error: "Invalid username or password" };
     }
-    throw err;
+    throw err; //next-redirect error
+  }
+};
+
+export const addBook = async (prevData, formData) => {
+  "use server";
+
+  const {
+    title,
+    author,
+    year_publish,
+    description,
+    number_copies,
+    number_available,
+    slug,
+  } = Object.fromEntries(formData);
+
+  try {
+    dbConnect();
+
+    // Create a default rating object
+    const defaultRating = new Rating({
+      total_score: 0,
+      total_ratings: 0,
+      average_rating: 0,
+    });
+
+    const newBook = new Book({
+      title,
+      author,
+      year_publish,
+      description,
+      number_copies,
+      number_available,
+      rating: defaultRating,
+      slug,
+    });
+
+    await newBook.save();
+    console.log("saved to db");
+    //revalidatePath("/blog");
+    revalidatePath("/admin");
+  } catch (err) {
+    console.log(err);
+    return { error: "Something went wrong!" };
   }
 };
